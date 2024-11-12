@@ -1,4 +1,6 @@
 jupyter
-numpy==1.26.4
+numpy
 pandas
 matplotlib
+yfinance
+jupytext
