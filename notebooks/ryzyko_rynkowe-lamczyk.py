@@ -247,8 +247,7 @@ xmin, xmax = plt.xlim()
 x = np.linspace(xmin, xmax, 100)
 p = norm.pdf(x, mu, std)
 plt.plot(x, p, 'k', linewidth=2)
-title = f"Dopasowanie rozkładu normalnego: mu = {mu:.2f},  std = {std:.2f}"
-plt.title(title)
+plt.title(f"Dopasowanie rozkładu normalnego: mu = {mu:.2f},  std = {std:.2f}")
 plt.xlabel("Zmiana ceny (diff)")
 plt.ylabel("Gęstość prawdopodobieństwa")
 plt.grid(True)
@@ -271,28 +270,40 @@ sigma = data["diff"].std()
 print(f"Mu: {mu}")
 print(f"Sigma: {sigma}")
 
+# %% [markdown]
+# Definiujemy poziom ufności $\alpha$ 5% i 1%:
+
 # %%
 alpha_95 = 0.05
 alpha_99 = 0.01
 
-# %%
-VaR_95 = norm.ppf(1 - alpha_95, loc=mu, scale=sigma)
-VaR_99 = norm.ppf(1 - alpha_99, loc=mu, scale=sigma)
+# %% [markdown]
+# Obliczamy Value at Risk czyli wielkość najgorszej straty przy poziomie ufności $\alpha$ 5% i 1%:
 
 # %%
-print(f"VaR 95% (Normalny rozkład): {VaR_95}")
-print(f"VaR 99% (Normalny rozkład): {VaR_99}")
+VaR_95 = norm.ppf(alpha_95, loc=mu, scale=sigma)
+VaR_99 = norm.ppf(alpha_99, loc=mu, scale=sigma)
+
+# %%
+print(f"VaR 95% (rozkład normalny): {VaR_95}")
+print(f"VaR 99% (rozkład normalny): {VaR_99}")
 
 # %% [markdown]
 # ### b) Obliczanie VaR dla rozkładu historycznego
 
-# %%
-VaR_95_hist = data["diff"].quantile(1-alpha_95)
-VaR_99_hist = data["diff"].quantile(1-alpha_99)
+# %% [markdown]
+# Dla podejścia historycznego wystarczy policzyć odpowiedni kwantyl:
 
 # %%
-print(f"VaR 95% (Rozkład historyczny): {VaR_95_hist}")
-print(f"VaR 99% (Rozkład historyczny): {VaR_99_hist}")
+VaR_95_hist = data["diff"].quantile(alpha_95)
+VaR_99_hist = data["diff"].quantile(alpha_99)
+
+# %%
+print(f"VaR 95% (rozkład historyczny): {VaR_95_hist}")
+print(f"VaR 99% (rozkład historyczny): {VaR_99_hist}")
+
+# %% [markdown]
+# Możemy porównać VaR parametryczny (z rozkładu normalnego) i VaR historyczny za pomocą wykresu:
 
 # %%
 plt.figure(figsize=(10, 6))
