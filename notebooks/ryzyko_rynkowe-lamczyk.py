@@ -24,7 +24,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import yfinance as yf
-from scipy.stats import norm
+from scipy.stats import norm, shapiro, kstest, t
 import pymannkendall as mk
 from statsmodels.tsa.stattools import adfuller
 
@@ -96,8 +96,8 @@ print(data.info())
 # - **Volume_NVDA**: liczba akcji, która zmieniła właściciela tego dnia.
 #
 # Typy danych w kolumnach:
-# - float64 (5 kolumn): Kolumny z wartościami liczbowymi zmiennoprzecinkowymi (ceny akcji).
-# - int64 (1 kolumna): Kolumna z wartościami całkowitymi (wolumen obrotu).
+# - float64 (5 kolumn): kolumny z wartościami liczbowymi zmiennoprzecinkowymi (ceny akcji).
+# - int64 (1 kolumna): kolumna z wartościami całkowitymi (Volume_NVDA).
 #
 # Możemy też sprawdzić podstawowe statysktyki zbioru:
 
@@ -109,8 +109,8 @@ print(data.describe())
 # - Wszystkie kolumny mają 250 wartości (zgodne z liczbą dni handlowych w 2023 roku). Brak danych nie występuje.
 # - Akcje miały średnią cenę na poziomie 36.56 USD, ale mediana 41.88 USD (percentyl 50%) wskazuje, że ceny częściej oscylowały wokół wyższych wartości.
 # - Rozpiętość między minimum (14.26 USD) a maksimum (50.39 USD) jest bardzo duża, co sugeruje znaczne wahania cen w ciągu roku.
-# - Rozkład cen w kwartylach pokazuje, że przez większość roku ceny akcji znajdowały się w przedziale ~27-46 USD.
-# - Średni wolumen obrotu był wysoki (~473 milionów akcji dziennie), ale znaczne odchylenie standardowe (161,402,800 akcji) wskazuje na duże różnice w aktywności inwestorów w poszczególnych dniach.
+# - Rozkład cen w kwartylach pokazuje, że przez większość roku ceny akcji znajdowały się w przedziale około 27-46 USD.
+# - Średni wolumen obrotu był wysoki (około 473 milionów akcji dziennie), ale znaczne odchylenie standardowe (161,402,800 akcji) wskazuje na duże różnice w aktywności inwestorów w poszczególnych dniach.
 
 # %% [markdown]
 # Interesuje nas kolumna Close_NVDA. Możemy przedstawić szereg czasowy cen zamknięcia na wykresie:
@@ -126,6 +126,7 @@ plt.xlabel("Data")
 plt.ylabel("Cena zamknięcia (USD)")
 plt.title("Cena zamknięcia akcji NVDA w czasie")
 
+# dodanie linii kwartyli
 plt.axhline(y=q25, color='red', linestyle='--', label=f'Q25: {q25:.2f}')
 plt.axhline(y=q50, color='green', linestyle='--', label=f'Q50 (Mediana): {q50:.2f}')
 plt.axhline(y=q75, color='orange', linestyle='--', label=f'Q75: {q75:.2f}')
@@ -135,10 +136,11 @@ plt.grid()
 plt.show()
 
 # %% [markdown]
-# Widzimy rosnący trend, co możemy potwierdzić testem Manna-Kendalla. Jest to test nieparametryczny test statystyczny (nie zakłada żadnego konkretnego rozkładu danych), który służy do wykrywania trendu w szeregach czasowych.
-# - Jeśli wartość statystyki testu jest dodatnia, oznacza to, że dane mają tendencję rosnącą.
-# - Jeśli wartość statystyki testu jest ujemna, oznacza to, że dane mają tendencję malejącą.
-# - Jeśli wartość testu jest bliska zeru, to oznacza, że w danych nie widać wyraźnego trendu.
+# Największą różnicę w cenie możemy zauważyć między majem a lipcem, gdzie cena podskoczyła z ponad 30 USD do prawie 40 USD. \
+# Widzimy rosnący trend, co możemy zweryfikować za pomocą testu Manna-Kendalla. Jest to nieparametryczny test statystyczny (nie zakłada żadnego konkretnego rozkładu danych), który służy do wykrywania trendu w szeregach czasowych.
+# - Jeśli wartość statystyki testu jest dodatnia, to dane mają tendencję rosnącą.
+# - Jeśli wartość statystyki testu jest ujemna, to dane mają tendencję malejącą.
+# - Jeśli wartość statystyki testu jest bliska zeru, to w danych nie widać wyraźnego trendu.
 
 # %%
 trend_test = mk.original_test(data['Close_NVDA'])
@@ -158,7 +160,7 @@ data["diff"] = data["Close_NVDA"].diff()
 data = data.dropna(subset=["diff"])
 
 # %% [markdown]
-# Sprawdzimy jak zmieniły się dane na wykresie:
+# Sprawdzimy na wykresie jak zmieniły się dane:
 
 # %%
 plt.figure(figsize=(10, 6))
@@ -172,6 +174,7 @@ plt.grid()
 plt.show()
 
 # %% [markdown]
+# Tak jak zauważylismy wcześniej, największa różnica w cenie wystąpiła w czerwcu i wynosiła około 7 USD. \
 # Na wykresie nie zauważamy wyraźnego trendu. Sprawdzimy to za pomocą testu Manna-Kendalla:
 
 # %%
@@ -185,7 +188,12 @@ print(f"p-value: {trend_test.p}")
 
 # %%
 result = adfuller(data["diff"].dropna())
-print("p-value:", result[1])
+print(f"p-value: {result[1]}")
+
+if result[1] < 0.05:
+    print("Odrzucamy hipotezę zerową. Szereg czasowy jest stacjonarny.")
+else:
+    print("Brak podstaw do odrzucenia hipotezy zerowej. Szereg czasowy jest niestacjonarny.")
 
 # %% [markdown]
 # Wartość p-value ($1.96 \times 10^{-28}$) jest bardzo bliska zeru, co sugeruje, że szereg czasowy jest stacjonarny. Możemy sprawdzić wartości odstające:
@@ -194,7 +202,8 @@ print("p-value:", result[1])
 plt.figure(figsize=(8, 5))
 sns.boxplot(data["diff"], color='lightblue')
 plt.title("Wartości odstające w zróżnicowanej cenie zamknięcia akcji NVDA")
-plt.xlabel("Zmiana ceny (diff)")
+plt.xlabel("")
+plt.ylabel("Wartość zmiany ceny (USD)")
 plt.grid(True)
 plt.show()
 
@@ -223,7 +232,7 @@ print(data["diff"].describe())
 plt.figure(figsize=(10, 6))
 data["diff"].hist(bins=50, edgecolor='k', color='orange')
 plt.title("Histogram zróżnicowanej ceny zamknięcia akcji NVDA")
-plt.xlabel("Zmiana ceny (diff)")
+plt.xlabel("Zmiana ceny (USD)")
 plt.ylabel("Częstotliwość")
 plt.grid(True)
 plt.show()
@@ -234,7 +243,9 @@ plt.show()
 # - Istnieje kilka przypadków, gdzie zmiana ceny była większa niż 4, ale są one rzadkie.
 # - Histogram jest asymetryczny, z większą liczbą przypadków po stronie dodatnich zmian ceny.
 #
-# Na podstawie histogramu, nasze dane mogą mieć rozkład normalny (rozkład Gaussa), ponieważ większość wartości skupia się wokół średniej (0), a liczba obserwacji maleje symetrycznie w miarę oddalania się od średniej. Jednakże, po prawej stronie widzimy pewne odchylenia od idealnego rozkładu normalnego (wartości skrajne).
+# Na podstawie histogramu, nasze dane mogą mieć rozkład normalny (rozkład Gaussa), ponieważ większość wartości skupia się wokół średniej (0), a liczba obserwacji maleje symetrycznie w miarę oddalania się od średniej. Jednakże, po prawej stronie widzimy pewne odchylenia od idealnego rozkładu normalnego (wartości skrajne, gruby ogon).
+#
+# Możemy spróbować dopasować rozkład normalny i porównać go z histogramem:
 
 # %%
 plt.figure(figsize=(10, 6))
@@ -248,14 +259,43 @@ x = np.linspace(xmin, xmax, 100)
 p = norm.pdf(x, mu, std)
 plt.plot(x, p, 'k', linewidth=2)
 plt.title(f"Dopasowanie rozkładu normalnego: mu = {mu:.2f},  std = {std:.2f}")
-plt.xlabel("Zmiana ceny (diff)")
+plt.xlabel("Zmiana ceny (USD)")
 plt.ylabel("Gęstość prawdopodobieństwa")
 plt.grid(True)
 plt.show()
 
 # %% [markdown]
-# wnioski...
-# - gruby ogon z prawej strony...
+# Czarna krzywa reprezentuje rozkład normalny o średniej $\mu$ = 0.14 i odchyleniu standardowym $\sigma$ = 1.01. Widzimy, że histogram w miarę dobrze pasuje do rozkładu normalnego, ale nie jest idealny ze względu na obecność grubego ogona z prawej strony.
+#
+# Przetestujemy, czy dane pochodzą z rozkładu normalnego za pomocą testu Shapiro-Wilka:
+
+# %%
+stat, p_value = shapiro(data["diff"])
+print(f"Statystyka testowa: {stat}")
+print(f"p-value: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu normalnego.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem normalnym.")
+
+# %% [markdown]
+# Dane nie pochodzą z rozkładu normalnego. Czy pochodzą z rozkładu t-Studenta? Zastosujemy test Kołmogorowa-Smirnowa do oceny zgodności danych z rozkładem t-Studenta:
+
+# %%
+params = t.fit(data["diff"])
+
+stat, p_value = kstest(data["diff"], 't', args=params)
+print(f"Statystyka testowa: {stat}")
+print(f"P-wartość: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu t-Studenta.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem t-Studenta.")
+
+# %% [markdown]
+# Zatem zróżnicowane ceny zamknięcia akcji NVDA mogą pochodzić z rozkładu t-Studenta.
 
 # %% [markdown]
 # ## Kalkulacja VaR
@@ -271,14 +311,14 @@ print(f"Mu: {mu}")
 print(f"Sigma: {sigma}")
 
 # %% [markdown]
-# Definiujemy poziom ufności $\alpha$ 5% i 1%:
+# Definiujemy poziom ufności ($\alpha$) 5% i 1%:
 
 # %%
 alpha_95 = 0.05
 alpha_99 = 0.01
 
 # %% [markdown]
-# Obliczamy Value at Risk czyli wielkość najgorszej straty przy poziomie ufności $\alpha$ 5% i 1%:
+# Obliczamy Value at Risk, czyli wielkość najgorszej straty przy poziomie ufności ($\alpha$) 5% i 1%:
 
 # %%
 VaR_95 = norm.ppf(alpha_95, loc=mu, scale=sigma)
@@ -289,6 +329,8 @@ print(f"VaR 95% (rozkład normalny): {VaR_95}")
 print(f"VaR 99% (rozkład normalny): {VaR_99}")
 
 # %% [markdown]
+# Z prawdopodobieństwem 95% dzienne straty na akcjach NVDA nie przekroczą -1.53 USD. Tylko w najgorszym 1% przypadków straty będą większe (bardziej negatywne) niż -2.22 USD.
+#
 # ### b) Obliczanie VaR dla rozkładu historycznego
 
 # %% [markdown]
@@ -303,13 +345,14 @@ print(f"VaR 95% (rozkład historyczny): {VaR_95_hist}")
 print(f"VaR 99% (rozkład historyczny): {VaR_99_hist}")
 
 # %% [markdown]
+# Historyczne dane sugerują, że najgorsze 5% przypadków strat na akcjach NVDA wyniosło co najmniej -1.47 USD. Tylko 1% dni historycznych miał straty większe (bardziej negatywne) niż -2.13 USD. \
 # Możemy porównać VaR parametryczny (z rozkładu normalnego) i VaR historyczny za pomocą wykresu:
 
 # %%
 plt.figure(figsize=(10, 6))
 data["diff"].hist(bins=50, edgecolor='k', color='orange')
 plt.title("Histogram zróżnicowanej ceny zamknięcia akcji NVDA")
-plt.xlabel("Zmiana ceny (diff)")
+plt.xlabel("Zmiana ceny (USD)")
 plt.ylabel("Częstotliwość")
 
 # dodanie linii VaR dla podejścia historycznego
@@ -323,22 +366,22 @@ plt.axvline(VaR_99, color='red', linestyle='-', linewidth=1, label=f'VaR 99% Par
 plt.legend()
 plt.show()
 
-# %% [markdown]
-# wnioski...
+# %%
+diff_95 = abs(VaR_95 - VaR_95_hist)
+diff_99 = abs(VaR_99 - VaR_99_hist)
+VaR = {
+    "Poziom ufności": ["95%", "99%"],
+    "VaR Normalny": [round(VaR_95, 2), round(VaR_99, 2)],
+    "VaR Historyczny": [round(VaR_95_hist, 2), round(VaR_99_hist, 2)],
+    "Różnica": [round(diff_95, 2), round(diff_99, 2)],
+}
+df = pd.DataFrame(VaR)
+print(df)
 
 # %% [markdown]
-# ## Podsumowanie wyników
+# Wnioski:
+# - Zarówno dla poziomu 95%, jak i 99%, wartości historycznego VaR są nieco mniej negatywne niż wartości VaR oszacowanego na podstawie rozkładu normalnego. Historyczne dane sugerują mniejsze potencjalne straty w najgorszych przypadkach niż model zakładający rozkład normalny.
+# - Rozkład danych historycznych prawdopodobnie różni się od rozkładu normalnego (dane mogą pochodzić z rozkładu t-Studenta). W przeciwieństwie do rozkładu normalnego, rozkład historyczny uwzględnia zdarzenia ekstremalne (grube ogony).
+# - Historyczny VaR jest bardziej realistyczny, ponieważ opiera się na rzeczywistych danych, a nie założeniu rozkładu.
 
 # %%
-
-# %% [markdown]
-# ---
-
-# %%
-# Analiza danych – sprawdzenie zakresu i jakości danych (częstotliwość, wartości odstające, rozkład).
-# Kalkulacja VaR – przy założeniu normalnego rozkładu (trzeba dopasować mu i sigma) oraz dla rozkładu historycznego z danych.
-# Krótkie podsumowanie wyników – word, powerpoint lub dobrze skomentowany i opisany kod programistyczny.
-
-# zysk lub starta
-
-# dane do zyskow i strat, mamy powiedziec co chcemy liczyc, cos tam z var, test na rozklad normalny, komentarzy duzo co widzimy na wykresach
