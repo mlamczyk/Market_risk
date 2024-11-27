@@ -8,5 +8,5 @@ jupytext
 scipy
 pymannkendall
 statsmodels
-copulas
 pingouin
+sklarpy
