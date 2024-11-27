@@ -18,318 +18,461 @@
 # ## Importy
 
 # %%
-#pip install numpy pandas seaborn matplotlib yfinance scipy copulas pingouin
+# pip install numpy pandas seaborn matplotlib yfinance scipy sklarpy pingouin
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import yfinance as yf
-from scipy.stats import spearmanr, norm, lognorm, rankdata
-from copulas.bivariate import Clayton, Frank, Gumbel
-# from copulas.bivariate import Gaussian
-from copulas.visualization import scatter_2d
+from scipy.stats import norm, lognorm, kstest, shapiro, t, pearsonr, kendalltau, spearmanr
+from sklarpy.copulas import student_t_copula, gaussian_copula, clayton_copula, gumbel_copula, frank_copula
+from sklarpy.univariate import student_t
 from pingouin import multivariate_normality
 
 # %% [markdown]
 # ## Ceny akcji NVIDA
+# Źródło danych Yahoo Finance: https://finance.yahoo.com/chart/NVDA.
+#
+# Tak jak w zadaniu pierwszym, pobieramy dzienne dane cen akcji NVIDIA Corporation z 2023 roku. Interesuje nas kolumna opisująca ceny zamknięcia Close_NVDA. Ten szereg różnicujemy by uzyskać szereg czasowy strat dziennych (wartości ujemne to straty, dodatnie to zyski).
 
 # %%
 nvda_data = yf.download("NVDA", start="2023-01-01", end="2023-12-31")
 nvda_data.columns = ["_".join(col).strip() for col in nvda_data.columns]
-
-# %%
-plt.figure(figsize=(10, 6))
-plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='blue', label="Cena zamknięcia")
-plt.xlabel("Data")
-plt.ylabel("Cena zamknięcia (USD)")
-plt.title("Cena zamknięcia _ w czasie")
-plt.legend()
-plt.grid()
-plt.show()
-
-# %%
 nvda_data["diff_nvda"] = nvda_data["Close_NVDA"].diff()
 nvda_data = nvda_data.dropna(subset=["diff_nvda"])
 
-# %%
-
 # %% [markdown]
-# ## Ceny akcji AMD
-
-# %%
-amd_data = yf.download("AMD", start="2023-01-01", end="2023-12-31")
-amd_data.columns = ["_".join(col).strip() for col in amd_data.columns]
-amd_data.shape
+# Możemy przedstawić szereg czasowy cen zamknięcia akcji NVDA na wykresie:
 
 # %%
 plt.figure(figsize=(10, 6))
-plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='blue', label="Cena zamknięcia NVDA")
-plt.plot(amd_data.index, amd_data["Close_AMD"], color='green', label="Cena zamknięcia AMD")
+plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='green', label="Cena zamknięcia")
 plt.xlabel("Data")
 plt.ylabel("Cena zamknięcia (USD)")
-plt.title("Cena zamknięcia _ w czasie")
+plt.title("Cena zamknięcia akcji NVDA w czasie")
 plt.legend()
 plt.grid()
 plt.show()
 
-# %%
-amd_data["diff_amd"] = amd_data["Close_AMD"].diff()
-amd_data = amd_data.dropna(subset=["diff_amd"])
-
-# %%
-
 # %% [markdown]
 # ## Ceny akcji Intel
+# Źródło danych Yahoo Finance: https://finance.yahoo.com/chart/INTC.
+#
+# Dane, które mogą być powiązane z cenami akcji NVIDIA Corporation to na przykład ceny akcji Intel Corporation (INTC). Wynika to z ich powiązania branżowego. Obie firmy działają w sektorze półprzewodników, a ich ceny akcji mogą wykazywać korelację ze względu na podobne czynniki wpływające na rynek, takie jak popyt na technologie, innowacje czy globalne wydarzenia ekonomiczne.
 
 # %%
 intc_data = yf.download("INTC", start="2023-01-01", end="2023-12-31")
 intc_data.columns = ["_".join(col).strip() for col in intc_data.columns]
-intc_data.shape
-
-# %%
-plt.figure(figsize=(10, 6))
-plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='blue', label="Cena zamknięcia NVDA")
-# plt.plot(amd_data.index, amd_data["Close_AMD"], color='green', label="Cena zamknięcia AMD")
-plt.plot(intc_data.index, intc_data["Close_INTC"], color='orange', label="Cena zamknięcia Intel")
-plt.xlabel("Data")
-plt.ylabel("Cena zamknięcia (USD)")
-plt.title("Cena zamknięcia _ w czasie")
-plt.legend()
-plt.grid()
-plt.show()
-
-# %%
 intc_data["diff_intc"] = intc_data["Close_INTC"].diff()
 intc_data = intc_data.dropna(subset=["diff_intc"])
 
-# %%
-
 # %% [markdown]
-# ## Indeks giełdowy Nasdaq-100
-
-# %%
-nasdaq_data = yf.download("^NDX", start="2023-01-01", end="2023-12-31")
-nasdaq_data.columns = ["_".join(col).strip() for col in nasdaq_data.columns]
-nasdaq_data.shape
-
-# %%
-nasdaq_data.head()
+# Probraliśmy dzienne dane cen akcji INTC z 2023 roku, więc oba szeregi mają tą samą częstotliwość (obejmują ten sam okres czasowy). Tak jak w przypadku akcji NVDA interesuje nas kolumna opisująca ceny zamknięcia Close_INTC. Ten szereg różnicujemy by uzyskać szereg czasowy strat dziennych.
+#
+# Możemy porównać szeregi czasowe cen zamknięcia akcji NVDA i INTC na wykresie:
 
 # %%
 plt.figure(figsize=(10, 6))
-# plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='blue', label="Cena zamknięcia NVDA")
-# plt.plot(amd_data.index, amd_data["Close_AMD"], color='green', label="Cena zamknięcia AMD")
-# plt.plot(intc_data.index, intc_data["Close_INTC"], color='orange', label="Cena zamknięcia Intel")
-plt.plot(nasdaq_data.index, nasdaq_data["Close_^NDX"], color='red', label="Cena zamknięcia Nasdaq-100")
+plt.plot(nvda_data.index, nvda_data["Close_NVDA"], color='green', label="Cena zamknięcia NVDA")
+plt.plot(intc_data.index, intc_data["Close_INTC"], color='blue', label="Cena zamknięcia INTC")
 plt.xlabel("Data")
 plt.ylabel("Cena zamknięcia (USD)")
-plt.title("Cena zamknięcia _ w czasie")
+plt.title("Ceny zamknięcia akcji NVDA i INTC w czasie")
 plt.legend()
 plt.grid()
 plt.show()
 
-# %%
-nasdaq_data["diff_nasdaq"] = nasdaq_data["Close_^NDX"].diff()
-nasdaq_data = nasdaq_data.dropna(subset=["diff_nasdaq"])
-
-# %%
+# %% [markdown]
+# - Obie serie czasowe wykazują ogólny trend wzrostowy. Cena zamknięcia akcji NVDA wzrosła z około 15 USD do ponad 45 USD, podczas gdy cena zamknięcia akcji INTC wzrosła z około 25 USD do około 45 USD.
+# - Ceny zamknięcia akcji NVDA wykazują większą zmienność w porównaniu do cen zamknięcia akcji INTC. Widać to po większych wahaniach zielonej linii w porównaniu do niebieskiej linii.
+# - Obie serie czasowe wydają się być powiązane, ponieważ ich ceny zamknięcia poruszają się w podobnym kierunku w dłuższym okresie czasu. W szczególności, w okresach wzrostu i spadku cen, obie linie wykazują podobne wzorce. Może to sugerować, że ceny zamknięcia akcji NVDA i INTC są skorelowane i mogą być pod wpływem podobnych czynników rynkowych.
 
 # %% [markdown]
-# ## Dopasowanie dat
+# ## Podstawowe statystyki
+# Możemy połączyć oba zróżnicowane szeregi by łatwiej się do nich odnosić:
 
 # %%
-# Dopasowanie dat
-combined_data = nvda_data[["diff_nvda"]].join(
-    amd_data[["diff_amd"]],
-    how="inner"  # Tylko wspólne daty
-)
-
-print(combined_data.head())
-
-# %%
-print(combined_data.shape)
-
-# %%
-plt.figure(figsize=(10, 6))
-combined_data["diff_nvda"].hist(bins=50, edgecolor='k', color='blue')
-plt.title("Histogram zróżnicowanej ceny zamknięcia akcji NVDA")
-plt.xlabel("Zmiana ceny (USD)")
-plt.ylabel("Częstotliwość")
-plt.grid(True)
-plt.show()
-
-# %%
-plt.figure(figsize=(10, 6))
-combined_data["diff_amd"].hist(bins=50, edgecolor='k', color='green')
-plt.title("Histogram zróżnicowanej ceny zamknięcia akcji AMD")
-plt.xlabel("Zmiana ceny (USD)")
-plt.ylabel("Częstotliwość")
-plt.grid(True)
-plt.show()
-
-# %%
-plt.figure(figsize=(10, 6))
-intc_data["diff_intc"].hist(bins=50, edgecolor='k', color='orange')
-plt.title("Histogram zróżnicowanej ceny zamknięcia akcji INTC")
-plt.xlabel("Zmiana ceny (USD)")
-plt.ylabel("Częstotliwość")
-plt.grid(True)
-plt.show()
-
-# %%
-plt.figure(figsize=(10, 6))
-nasdaq_data["diff_nasdaq"].hist(bins=50, edgecolor='k', color='red')
-plt.title("Histogram zróżnicowanej ceny zamknięcia indeksu ^NDX")
-plt.xlabel("Zmiana ceny (USD)")
-plt.ylabel("Częstotliwość")
-plt.grid(True)
-plt.show()
-
-# %%
-# Tworzenie siatki wykresów
-fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-
-# Histogram NVDA
-axes[0, 0].hist(combined_data["diff_nvda"], bins=50, edgecolor='k', color='blue')
-axes[0, 0].set_title("NVDA: Zróżnicowanie ceny zamknięcia")
-axes[0, 0].set_xlabel("Zmiana ceny (USD)")
-axes[0, 0].set_ylabel("Częstotliwość")
-axes[0, 0].grid(True)
-
-# Histogram AMD
-axes[0, 1].hist(combined_data["diff_amd"], bins=50, edgecolor='k', color='green')
-axes[0, 1].set_title("AMD: Zróżnicowanie ceny zamknięcia")
-axes[0, 1].set_xlabel("Zmiana ceny (USD)")
-axes[0, 1].set_ylabel("Częstotliwość")
-axes[0, 1].grid(True)
-
-# Histogram INTC
-axes[1, 0].hist(intc_data["diff_intc"], bins=50, edgecolor='k', color='orange')
-axes[1, 0].set_title("INTC: Zróżnicowanie ceny zamknięcia")
-axes[1, 0].set_xlabel("Zmiana ceny (USD)")
-axes[1, 0].set_ylabel("Częstotliwość")
-axes[1, 0].grid(True)
-
-# Histogram Nasdaq-100
-axes[1, 1].hist(nasdaq_data["diff_nasdaq"], bins=50, edgecolor='k', color='red')
-axes[1, 1].set_title("Nasdaq-100: Zróżnicowanie ceny zamknięcia")
-axes[1, 1].set_xlabel("Zmiana ceny (USD)")
-axes[1, 1].set_ylabel("Częstotliwość")
-axes[1, 1].grid(True)
-
-# Dostosowanie odstępów
-plt.tight_layout()
-
-# Wyświetlenie wykresów
-plt.show()
-
-# %%
+data = pd.DataFrame({
+    "diff_nvda": nvda_data["diff_nvda"],
+    "diff_intc": intc_data["diff_intc"]
+}).dropna()
 
 # %% [markdown]
-# ## Krok 3
+# Wyświetlimy podstawowe informacje o zbiorze:
 
 # %%
-plt.figure(figsize=(14, 6))
-plt.plot(combined_data.index, combined_data["diff_nvda"], label="NVDA", color="blue", alpha=0.7)
-plt.plot(combined_data.index, combined_data["diff_amd"], label="AMD", color="green", alpha=0.7)
-plt.title("Różnice dzienne dla NVDA i AMD")
+print(data.info())
+
+# %% [markdown]
+# - Dane obejmują 249 wpisów, co oznacza, że mamy do czynienia z codziennymi zmianami cen zamknięcia akcji NVDA i INTC w okresie od 4 stycznia 2023 roku do 29 grudnia 2023 roku.
+# - Obie kolumny, diff_nvda i diff_intc, zawierają 249 niepustych wartości (non-null), co oznacza, że nie ma brakujących danych w tym zbiorze.
+#
+# Możemy też sprawdzić podstawowe statysktyki zbioru:
+
+# %%
+print(data.describe())
+
+# %% [markdown]
+# - Średnia zmiana ceny zamknięcia dla NVDA wynosi około 0.141 USD, a dla INTC około 0.094 USD. Oznacza to, że średnio ceny zamknięcia obu akcji wzrastały, przy czym NVDA miała nieco większy średni wzrost.
+# - Odchylenie standardowe dla NVDA wynosi około 1.017, a dla INTC około 0.812. Wskazuje to, że zmiany cen NVDA są bardziej zmienne w porównaniu do INTC.
+# - Największy spadek ceny zamknięcia dla NVDA wynosił -2.277 USD, a dla INTC -2.100 USD. Największy wzrost ceny zamknięcia dla NVDA wynosił 7.442 USD, a dla INTC 3.020 USD. NVDA wykazuje większe skrajne wartości zarówno w przypadku wzrostów, jak i spadków.
+# - Dla NVDA, 25% zmian cen jest mniejszych niż -0.443 USD, 50% (mediana) wynosi 0.139 USD, a 75% jest mniejszych niż 0.634 USD. Dla INTC, 25% zmian cen jest mniejszych niż -0.430 USD, mediana wynosi 0.130 USD, a 75% jest mniejszych niż 0.580 USD. Wskazuje to, że większość zmian cen dla obu akcji jest stosunkowo niewielka, ale NVDA ma większe wahania.
+#
+# Narysujemy wykres obu szeregów:
+
+# %%
+plt.figure(figsize=(10, 6))
+plt.plot(data.index, data["diff_nvda"], label="NVDA", color="green", alpha=0.7)
+plt.plot(data.index, data["diff_intc"], label="INTC", color="blue", alpha=0.7)
+plt.title("Różnice dzienne dla NVDA i INTC")
 plt.xlabel("Data")
 plt.ylabel("Różnica (USD)")
 plt.legend()
 plt.grid(True)
 plt.show()
 
-# %%
-corr_spearman, _ = spearmanr(combined_data["diff_nvda"], combined_data["diff_amd"])
-print(f"Korelacja Spearmana: {corr_spearman}")
-
 # %% [markdown]
-# ## Krok 4
+# - Obie linie wykazują dużą zmienność w ciągu roku.
+# - Największy skok w różnicy cen akcji NVDA wystąpił w okolicach czerwca 2023 roku, gdzie różnica wyniosła ponad 7 USD.
+# - Różnice cen akcji NVDA i INTC oscylują wokół zera, co oznacza, że w większości dni różnice były niewielkie.
+#
+# Możemy sprawdzić wartości odstające za pomocą wykresu pudełkowego:
 
 # %%
-# Dopasowanie rozkładu normalnego do strat NVDA
-mean_nvda, std_nvda = norm.fit(combined_data["diff_nvda"])
-mean_amd, std_amd = norm.fit(combined_data["diff_amd"])
-
-# Histogramy z dopasowanymi rozkładami
-x = np.linspace(combined_data["diff_nvda"].min(), combined_data["diff_nvda"].max(), 100)
-pdf_nvda = norm.pdf(x, mean_nvda, std_nvda)
-
-plt.figure(figsize=(10, 6))
-plt.hist(combined_data["diff_nvda"], bins=50, density=True, alpha=0.6, color='blue', edgecolor='k')
-plt.plot(x, pdf_nvda, 'r--', label="Normal fit")
-plt.title("Rozkład różnic NVDA")
-plt.xlabel("Różnica (USD)")
-plt.ylabel("Gęstość")
-plt.legend()
+plt.figure(figsize=(8, 5))
+sns.boxplot(data=data, color='lightblue')
+plt.title("Porównanie wartości odstających w zróżnicowanych cenach zamknięcia akcji NVDA i INTC")
+plt.xlabel("")
+plt.ylabel("Wartość zmiany ceny (USD)")
 plt.grid(True)
 plt.show()
 
-# %%
-x = np.linspace(combined_data["diff_amd"].min(), combined_data["diff_amd"].max(), 100)
-pdf_amd = norm.pdf(x, mean_amd, std_amd)
+# %% [markdown]
+# - Mediana zmian cen akcji dla obu firm jest bliska zeru, co sugeruje, że większość zmian cen oscyluje wokół tej wartości.
+# - Rozkład zmian cen akcji NVDA jest szerszy niż INTC, co oznacza, że zmiany cen akcji NVDA są bardziej zróżnicowane.
+# - W obu przypadkach występują wartości odstające, ale w przypadku NVDA są one bardziej ekstremalne, co może sugerować większą zmienność cen akcji tej firmy.
+# - Zakres zmian cen akcji NVDA jest większy niż INTC, co może sugerować większą dynamikę rynku dla akcji NVDA.
+#
+# Policzymy korelację liniową, statystyki Tau Kendalla oraz Rho Spearmana w celu oceny zależności pomiędzy zmiennymi.\
+# Korelacja Pearsona mierzy liniową zależność między zmiennymi. Wynik to współczynnik korelacji Pearsona (wartość od -1 do 1) i wartość p, która ocenia istotność tej korelacji.
 
+# %%
+pearson_corr, pearson_p = pearsonr(data["diff_nvda"], data["diff_intc"])
+print(f"Korelacja Pearsona: {pearson_corr}, p-value: {pearson_p}")
+
+# %% [markdown]
+# Wartość 0.227 wskazuje na słabą, ale dodatnią zależność liniową między diff_nvda i diff_intc. Wartość p jest bardzo mała (0.0003), co oznacza, że zależność jest statystycznie istotna.
+#
+# Statystyka Tau Kendalla mierzy monotoniczną zależność między zmiennymi na podstawie par porównywalnych.
+
+# %%
+kendall_corr, kendall_p = kendalltau(data["diff_nvda"], data["diff_intc"])
+print(f"Statystyka Tau Kendalla: {kendall_corr}, p-value: {kendall_p}")
+
+# %% [markdown]
+# Wartość 0.244 wskazuje na umiarkowaną dodatnią monotoniczną zależność między zmiennymi. Tau Kendalla jest bardziej odporny na wartości odstające niż korelacja Pearsona. Bardzo niski poziom p ($9.51 \times 10^{-9}$) wskazuje, że zależność jest istotna.
+#
+# Statystyka Rho Spearmana mierzy monotoniczną zależność na podstawie rang zmiennych.
+
+# %%
+spearman_corr, spearman_p = spearmanr(data["diff_nvda"], data["diff_intc"])
+print(f"Statystyka Rho Spearmana: {spearman_corr}, p-value: {spearman_p}")
+
+# %% [markdown]
+# Wartość 0.351 również wskazuje na umiarkowaną dodatnią monotoniczną zależność między zmiennymi. Rho Spearmana, podobnie jak Tau Kendalla, opiera się na rangach i jest mniej wrażliwy na wartości odstające. Bardzo mała wartość p ($1.27 \times 10^{-8}$) wskazuje na istotność statystyczną tej zależności.
+#
+# Wnioski:
+# - Wszystkie trzy miary korelacji wskazują, że istnieje statystycznie istotna zależność między zmianami wartości diff_nvda i diff_intc.
+# - Korelacja Pearsona sugeruje, że zależność liniowa jest raczej słaba (0.227). Tau Kendalla i Spearmana wskazują na umiarkowaną zależność monotoniczną. Wyższe wartości tych współczynników w porównaniu do Pearsona mogą sugerować, że związek między zmiennymi jest nieliniowy lub mniej czuły na wartości odstające.
+
+# %% [markdown]
+# ## Dopasowanie rozkładów
+# Za pomocą histogramu możemy zobaczyć, jak rozkładają się wartości w zróżnicowanym szeregu cen akcji NVDA:
+
+# %%
 plt.figure(figsize=(10, 6))
-plt.hist(combined_data["diff_amd"], bins=50, density=True, alpha=0.6, color='green', edgecolor='k')
-plt.plot(x, pdf_amd, 'r--', label="Normal fit")
-plt.title("Rozkład różnic AMD")
-plt.xlabel("Różnica (USD)")
-plt.ylabel("Gęstość")
-plt.legend()
+data["diff_nvda"].hist(bins=50, edgecolor='k', color='green')
+plt.title("Histogram zróżnicowanej ceny zamknięcia akcji NVDA")
+plt.xlabel("Zmiana ceny (USD)")
+plt.ylabel("Częstotliwość")
 plt.grid(True)
 plt.show()
 
-# %%
-# Analogicznie można dopasować rozkład log-normalny za pomocą lognorm.fit.
+# %% [markdown]
+# Z zadania pierwszego wiemy, że zróżnicowane ceny zamknięcia akcji NVDA nie pochodzą z rozkładu normalnego, ale mogą pochodzić z rozkładu t-Studenta:
 
 # %%
-# Do oceny dopasowania można użyć testów statystycznych, takich jak test Andersona-Darlinga lub Kolmogorova-Smirnova.
+# Test Shapiro-Wilka
+stat, p_value = shapiro(data["diff_nvda"])
+print(f"Statystyka testowa: {stat}")
+print(f"p-value: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu normalnego.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem normalnym.")
 
 # %%
+# Test Kołmogorowa-Smirnowa
+params = t.fit(data["diff_nvda"])
+
+stat, p_value = kstest(data["diff_nvda"], 't', args=params)
+print(f"Statystyka testowa: {stat}")
+print(f"p-value: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu t-Studenta.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem t-Studenta.")
 
 # %% [markdown]
-# ## Krok 5
+# Za pomocą histogramu możemy również zobaczyć, jak rozkładają się wartości w zróżnicowanym szeregu cen akcji INTC:
 
 # %%
-# Przygotowanie danych w [0, 1] (przekształcenie w wartości kwantylowe)
-u = rankdata(combined_data["diff_nvda"]) / len(combined_data["diff_nvda"])
-v = rankdata(combined_data["diff_amd"]) / len(combined_data["diff_amd"])
+plt.figure(figsize=(10, 6))
+data["diff_intc"].hist(bins=50, edgecolor='k', color='blue')
+plt.title("Histogram zróżnicowanej ceny zamknięcia akcji INTC")
+plt.xlabel("Zmiana ceny (USD)")
+plt.ylabel("Częstotliwość")
+plt.grid(True)
+plt.show()
 
-# Dopasowanie kopuły Gumbela
-gumbel = Gumbel()
-gumbel.fit(np.column_stack((u, v)))
-
-# Generowanie próbek z dopasowanej kopuły
-samples = gumbel.sample(1000)
-
-# Upewnienie się, że dane są w formacie pandas DataFrame
-samples_df = pd.DataFrame(samples, columns=["U1", "U2"])
-
-# Rysowanie dopasowania
-scatter_2d(samples_df, title="Kopula Gumbela")
+# %% [markdown]
+# - Zmiany cen zamknięcia akcji INTC są najczęściej niewielkie, oscylujące wokół 0 USD.
+# - Rozkład zmian cen jest symetryczny, co sugeruje, że zmiany w górę i w dół są równie prawdopodobne.
+# - Wartości skrajne (duże zmiany cen) są rzadkie.
+#
+# Dane mogą pochodzić z rozkładu normalnego, ponieważ histogram ma kształt dzwonu, charakterystyczny dla rozkładu normalnego. Możemy spróbować dopasować rozkład normalny i porównać go z histogramem:
 
 # %%
-# Wyznacz log-likelihood, AIC i BIC dla każdej kopuły i wybierz najlepszą.
+plt.figure(figsize=(10, 6))
+plt.hist(data["diff_intc"], bins=50, density=True, color='blue', edgecolor='k')
+
+mu, std = norm.fit(data["diff_intc"])
+
+xmin, xmax = plt.xlim()
+x = np.linspace(xmin, xmax, 100)
+p = norm.pdf(x, mu, std)
+plt.plot(x, p, 'red', linewidth=2)
+plt.title(f"Dopasowanie rozkładu normalnego: mu = {mu:.2f},  std = {std:.2f}")
+plt.xlabel("Zmiana ceny (USD)")
+plt.ylabel("Gęstość prawdopodobieństwa")
+plt.grid(True)
+plt.show()
+
+# %% [markdown]
+# Czarna krzywa reprezentuje rozkład normalny o średniej $\mu$ = 0.09 i odchyleniu standardowym $\sigma$ = 0.81.
+#
+# Przetestujemy, czy dane pochodzą z rozkładu normalnego za pomocą testu Shapiro-Wilka:
 
 # %%
-data = combined_data[["diff_nvda", "diff_amd"]].dropna()
-mardia = multivariate_normality(data, alpha=0.05)
-print(mardia)
+stat, p_value = shapiro(data["diff_intc"])
+print(f"Statystyka testowa: {stat}")
+print(f"p-value: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu normalnego.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem normalnym.")
+
+# %% [markdown]
+# Dane nie pochodzą z rozkładu normalnego. Czy pochodzą z rozkładu t-Studenta? Zastosujemy test Kołmogorowa-Smirnowa do oceny zgodności danych z rozkładem t-Studenta:
 
 # %%
+params = t.fit(data["diff_intc"])
+
+stat, p_value = kstest(data["diff_intc"], 't', args=params)
+print(f"Statystyka testowa: {stat}")
+print(f"p-value: {p_value}")
+
+if p_value > 0.05:
+    print("Brak podstaw do odrzucenia hipotezy. Dane mogą pochodzić z rozkładu t-Studenta.")
+else:
+    print("Odrzucamy hipotezę. Dane nie są zgodne z rozkładem t-Studenta.")
+
+# %% [markdown]
+# Zatem zróżnicowane ceny zamknięcia akcji INTC również mogą pochodzić z rozkładu t-Studenta.
+
+# %% [markdown]
+# ## Dopasowanie kopuł
+# Dopasujemy pięć kopuł i ocenimy ich dopasowanie:
+# - eliptyczne - T-studenta, normalna,
+# - archimedejskie - Gumbela, Claytona, Franka.
+#
+# Sprawdzimy jak wygląda nasz rozkład łączny:
 
 # %%
+g = sns.jointplot(x="diff_nvda", y="diff_intc", data=data, kind="scatter", marginal_kws=dict(bins=30, fill=True))
+
+g.fig.suptitle("Wykres rozkładu łącznego z histogramami brzegowymi", y=1.02)
+plt.xlabel("X1")
+plt.ylabel("X2")
+plt.show()
+
+# %% [markdown]
+# Punkty danych są skoncentrowane wokół środka układu współrzędnych, co sugeruje, że zmienne mogą być skorelowane w sposób liniowy. Wygląda na to, że rozkład jest raczej eliptyczny.
+#
+# ### Kopuła T-Studenta
+# Ponieważ rozkłady brzegowe mogą pochodzić z rozkładu t-Studenta, przekształcimy szeregi na dystrybuanty brzegowe dopasowując rozkłady t-Studenta:
 
 # %%
+fitted_marginals = {
+    0: student_t.fit(data["diff_nvda"]),
+    1: student_t.fit(data["diff_intc"])
+}
+
+data["u1"] = fitted_marginals[0].cdf(np.array(data["diff_nvda"]))
+data["u2"] = fitted_marginals[1].cdf(np.array(data["diff_intc"]))
+
+# %% [markdown]
+# Dopasowujemy kopułę t-Studenta z uwzględnieniem brzegowych rozkładów:
 
 # %%
-# Krok 1: Pobierz historyczne ceny akcji/surowców/walut, które uważasz za powiązane z szeregiem czasowym z pierwszego zadania. Przykład: jeśli w zadaniu 1 korzystano z cen akcji PKO BP, to można wybrać ceny akcji mBank. Skomentuj wybór.
+student_t_fit = student_t_copula.fit(data[["u1", "u2"]], mdists=fitted_marginals)
 
-# Krok 2: Przekształć pobrane dane w straty o wybranej częstotliwości. 
+# %% [markdown]
+# Możemy ocenić dopasowanie kopuły za pomocą miar:
+# - Log-Likelihood: jest to miara, która ocenia, jak dobrze model kopuły pasuje do danych. Wyższa wartość log-likelihood wskazuje na lepsze dopasowanie modelu do danych.
+# - AIC (Akaike Information Criterion): AIC uwzględnia zarówno dopasowanie modelu, jak i jego złożoność. Niższa wartość AIC wskazuje na lepszy model, ponieważ oznacza lepsze dopasowanie przy mniejszej złożoności.
+# - BIC (Bayesian Information Criterion): BIC również uwzględnia dopasowanie modelu i jego złożoność, ale karze bardziej za złożoność niż AIC. Niższa wartość BIC wskazuje na lepszy model.
+#
+# Zatem niższe wartości AIC i BIC oraz wyższa wartość log-likelihood wskazują na lepsze dopasowanie kopuły do danych.
+#
+# Aby porównać wyniki miar różnych kopuł dodamy je do tabeli:
 
-# Krok 3: Oblicz podstawowe statystyki, takie jak średnia, wariancja, liczba braków dla szeregów czasowych strat. Narysuj wykres obu szeregów i skomentuj. Policz ich korelację Spearmana/tau Kendalla/dowolne wybrane miary zależności i skomentuj.
+# %%
+results = pd.DataFrame({
+    "Copula": ["Student-t"],
+    "Log-Likelihood": [student_t_fit.loglikelihood()],
+    "AIC": [student_t_fit.aic()],
+    "BIC": [student_t_fit.bic()]
+})
 
-# Krok 4: Dopasuj rozkłady normalny i log-normalny do obu szeregów czasowych strat i oceń ich dopasowanie.
+print(results.loc[0])
 
-# Krok 5: Dopasuj różne kopuły (T-Studenta, normalną, Claytona, Franka, Gumbela) do połączonych szeregów czasowych strat i użyj kryteriów log-likelihood, AIC i BIC, aby wybrać najlepiej dopasowaną kopułę. Wykonaj test Mardia dla zbadania wielowymiarowej normalności.
+# %% [markdown]
+# Wyniki podsumujemy dla wszystkich kopuł jednocześnie. Analogicznie możemy dopasować pozostałe kopuły.
+#
+# ### Kopuła Gaussa
 
+# %%
+gaussian_fit = gaussian_copula.fit(data[["u1", "u2"]], mdists=fitted_marginals)
+
+results = pd.concat(
+    [results, pd.DataFrame({
+        "Copula": ["Gaussian"],
+        "Log-Likelihood": [gaussian_fit.loglikelihood()],
+        "AIC": [gaussian_fit.aic()],
+        "BIC": [gaussian_fit.bic()],
+    })],
+    ignore_index=True
+)
+
+print(results.loc[1])
+
+# %% [markdown]
+# ### Kopuła Claytona
+
+# %%
+clayton_fit = clayton_copula.fit(data[["u1", "u2"]], mdists=fitted_marginals, verbose=True)
+
+results = pd.concat(
+    [results, pd.DataFrame({
+        "Copula": ["Clayton"],
+        "Log-Likelihood": [clayton_fit.loglikelihood()],
+        "AIC": [clayton_fit.aic()],
+        "BIC": [clayton_fit.bic()],
+    })],
+    ignore_index=True
+)
+
+print(results.loc[2])
+
+# %% [markdown]
+# Ostrzeżenia wskazują na potencjalne problemy z numeryczną stabilnością i optymalizacją, które mogą wpłynąć na wiarygodność wyników.
+# ### Kopuła Gumbela
+
+# %%
+gumbel_fit = gumbel_copula.fit(data[["u1", "u2"]], mdists=fitted_marginals)
+
+results = pd.concat(
+    [results, pd.DataFrame({
+        "Copula": ["Gumbel"],
+        "Log-Likelihood": [gumbel_fit.loglikelihood()],
+        "AIC": [gumbel_fit.aic()],
+        "BIC": [gumbel_fit.bic()],
+    })],
+    ignore_index=True
+)
+
+print(results.loc[3])
+
+# %% [markdown]
+# ### Kopuła Franka
+
+# %%
+frank_fit = frank_copula.fit(data[["u1", "u2"]], mdists=fitted_marginals)
+
+results = pd.concat(
+    [results, pd.DataFrame({
+        "Copula": ["Frank"],
+        "Log-Likelihood": [frank_fit.loglikelihood()],
+        "AIC": [frank_fit.aic()],
+        "BIC": [frank_fit.bic()],
+    })],
+    ignore_index=True
+)
+
+print(results.loc[4])
+
+# %% [markdown]
+# Ostrzeżenie odnosi się do problemów z obliczaniem gradientu funkcji celu w trakcie procesu optymalizacji.
+#
+# Zestawienie wyników Log-Likelihood, AIC i BIC:
+
+# %%
+print("\nZestawienie wyników dla wszystkich kopuł:")
+print(results)
+
+# %% [markdown]
+# - Student-t i Gaussian mają podobne wartości log-likelihood, AIC i BIC, co sugeruje, że oba modele są porównywalne pod względem dopasowania do danych.
+# - Clayton ma znacznie wyższy log-likelihood i znacznie niższe wartości AIC i BIC w porównaniu do pozostałych modeli. To sugeruje, że model Claytona jest znacznie lepiej dopasowany do danych niż pozostałe modele.
+# - Gumbel i Frank mają wyższe wartości AIC i BIC w porównaniu do Student-t i Gaussian, co sugeruje, że są one mniej dopasowane do danych.
+#
+# Wyniki dla kopuły Claytona znacznie różnią się od pozostałych (w porównaniu do pozostałych wyglądają jak błąd lub nadmierne dopasowanie do danych). Sprawdzimy z czego może to wynikać. Wyświetlimy parametry dopasowanej kopuły Claytona:
+
+# %%
+print(clayton_fit.copula_params.to_dict)
+
+# %% [markdown]
+# Parametr theta w kopule Claytona wskazuje na siłę zależności pomiędzy zmiennymi. Wartość theta = 12.58 sugeruje stosunkowo silną zależność pozytywną pomiędzy zmiennymi. Tak wysoka wartość jest możliwa, ale może być to też wynik nadmiernego dopasowania (overfitting).
+#
+# Aby wybrać najlepszą kopułę będziemy patrzeć na wyniki testu BIC. Posortujemy tabelę rosnąco względem kolumny BIC, więc najlepsza kopuła będzie na samej górze:
+
+# %%
+results_sorted = results.sort_values(by="BIC", ascending=True).reset_index(drop=True)
+
+best_copula = results_sorted.iloc[0]
+print("\nNajlepsza kopuła według BIC:")
+print(best_copula)
+
+print("\nTabela z wynikami (posortowana według BIC):")
+print(results_sorted)
+
+# %% [markdown]
+# Overfitting w przypadku kopuły Claytona można zdiagnozować, sprawdzając, czy wyniki modelu na danych testowych (np. Log-Likelihood, AIC, BIC) są gorsze niż na danych treningowych. Jeśli teraz założymy, że kopuła Claytona jest nadmiernie dopasowana, to drugą najlepszą kopułą według BIC będzie kopuła Gumbela.
+#
+# ## Test Mardia
+# Możemy wykonać test na wielowymiarową normalność oraz policzyć skośność i kurtozę:
+
+# %%
+mardia_test = multivariate_normality(data[["diff_nvda", "diff_intc"]], alpha=0.05)
+
+print("Test Mardia:")
+print(mardia_test)
+
+# %% [markdown]
+# Wyniki testu Mardia (za pomocą statystyki Henze-Zirklera) wskazują, że dane nie spełniają założeń wielowymiarowej normalności.\
+# Statystyka hz = 2.555 jest miarą stopnia odchylenia danych od wielowymiarowego rozkładu normalnego. Im większa wartość, tym większe odchylenie od normalności. Niska wartość p oznacza, że możemy odrzucić hipotezę zerową, czyli założenie, że dane są wielowymiarowo normalne.
+
+# %%
