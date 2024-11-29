@@ -462,6 +462,61 @@ print(results_sorted)
 # %% [markdown]
 # Overfitting w przypadku kopuły Claytona można zdiagnozować, sprawdzając, czy wyniki modelu na danych testowych (np. Log-Likelihood, AIC, BIC) są gorsze niż na danych treningowych. Jeśli teraz założymy, że kopuła Claytona jest nadmiernie dopasowana, to drugą najlepszą kopułą według BIC będzie kopuła Gumbela.
 #
+# Sprawdzimy dopasowanie kopuł generując z nich przykładowe próbki i porównując je z rozkładem łącznych oryginalnych danych. Możemy wygenerować próbki za pomocą metody rvs():
+
+# %%
+student_t_samples = student_t_fit.rvs(len(data))
+gaussian_samples = gaussian_fit.rvs(len(data))
+clayton_samples = clayton_fit.rvs(len(data))
+gumbel_samples = gumbel_fit.rvs(len(data))
+frank_samples = frank_fit.rvs(len(data))
+
+# %% [markdown]
+# Rysujemy wykresy rozrzutu:
+
+# %%
+fig, ax = plt.subplots(3, 2, figsize=(14, 18))
+axes = ax.flatten()
+
+copula_samples = [
+    (student_t_samples, "Kopuła t-Studenta"),
+    (gaussian_samples, "Kopuła Gaussowska"),
+    (clayton_samples, "Kopuła Claytona"),
+    (gumbel_samples, "Kopuła Gumbela"),
+    (frank_samples, "Kopuła Franka")
+]
+
+for i, (samples, title) in enumerate(copula_samples):
+    sns.scatterplot(
+        x=data["diff_nvda"], y=data["diff_intc"],
+        ax=axes[i], color="blue", alpha=0.5, label="Oryginalne dane"
+    )
+    sns.scatterplot(
+        x=samples[:, 0], y=samples[:, 1],
+        ax=axes[i], color="red", alpha=0.5, label=f"Próbki z {title.split()[-1]}"
+    )
+    axes[i].set_title(title)
+    axes[i].set_xlabel("X1")
+    axes[i].set_ylabel("X2")
+    axes[i].legend()
+    axes[i].set_xlim(-4.5, 8)
+    axes[i].set_ylim(-3.5, 4)
+    axes[i].grid(True)
+
+axes[-1].axis("off")
+
+plt.tight_layout()
+plt.show()
+
+# %%
+print(results_sorted[["Copula", "BIC"]])
+
+# %% [markdown]
+# - Punkty wygenerowane z kopuły Claytona skupiają się na przekątnej i prawie wcale nie przypominają rozrzutu danych oryginalnych.
+# - Próbki z kopuły Gumbela skupia się w centrum gęstości oryginalnych danych. Według testu BIC, kopuła Gumbela jest najlepsza.
+# - Punkty z kopuły Franka przypominają ciabattę i radzą sobie nieźle w odwzorowaniu rozrzutu oryginalnych danych.
+# - Kopuły Gaussa i t-Studenta miały podobne wyniki testu BIC. Próbki wygenerowane z tych kopuł pokrywają znaczną część obszarów zajmowanych przez niebieskie punkty, jednak nie są tak skupione w centralnych obszarach.
+#
 # ## Test Mardia
 # Możemy wykonać test na wielowymiarową normalność oraz policzyć skośność i kurtozę:
 
