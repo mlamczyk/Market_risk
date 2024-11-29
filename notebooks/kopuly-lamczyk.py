@@ -305,6 +305,7 @@ else:
 g = sns.jointplot(x="diff_nvda", y="diff_intc", data=data, kind="scatter", marginal_kws=dict(bins=30, fill=True))
 
 g.fig.suptitle("Wykres rozkładu łącznego z histogramami brzegowymi", y=1.02)
+sns.kdeplot(data=data, x="diff_nvda", y="diff_intc")
 plt.xlabel("X1")
 plt.ylabel("X2")
 plt.show()
@@ -462,7 +463,7 @@ print(results_sorted)
 # %% [markdown]
 # Overfitting w przypadku kopuły Claytona można zdiagnozować, sprawdzając, czy wyniki modelu na danych testowych (np. Log-Likelihood, AIC, BIC) są gorsze niż na danych treningowych. Jeśli teraz założymy, że kopuła Claytona jest nadmiernie dopasowana, to drugą najlepszą kopułą według BIC będzie kopuła Gumbela.
 #
-# Sprawdzimy dopasowanie kopuł generując z nich przykładowe próbki i porównując je z rozkładem łącznych oryginalnych danych. Możemy wygenerować próbki za pomocą metody rvs():
+# Sprawdzimy dopasowanie kopuł generując z nich przykładowe próbki i porównując je z rozkładem łącznym oryginalnych danych. Możemy wygenerować próbki za pomocą metody rvs():
 
 # %%
 student_t_samples = student_t_fit.rvs(len(data))
@@ -472,10 +473,10 @@ gumbel_samples = gumbel_fit.rvs(len(data))
 frank_samples = frank_fit.rvs(len(data))
 
 # %% [markdown]
-# Rysujemy wykresy rozrzutu:
+# Rysujemy wykresy rozkładu dwuwymiarowego uzywając sns.kdeplot(x,y). Punkty na wykresie oznaczają dane oryginalne, natomiast linie zostały wygenerowane na podstawie próbek z dopasowanych kopuł:
 
 # %%
-fig, ax = plt.subplots(3, 2, figsize=(14, 18))
+fig, ax = plt.subplots(3, 2, figsize=(10, 14))
 axes = ax.flatten()
 
 copula_samples = [
@@ -491,10 +492,12 @@ for i, (samples, title) in enumerate(copula_samples):
         x=data["diff_nvda"], y=data["diff_intc"],
         ax=axes[i], color="blue", alpha=0.5, label="Oryginalne dane"
     )
-    sns.scatterplot(
-        x=samples[:, 0], y=samples[:, 1],
-        ax=axes[i], color="red", alpha=0.5, label=f"Próbki z {title.split()[-1]}"
-    )
+    # sns.scatterplot(
+    #     x=samples[:, 0], y=samples[:, 1],
+    #     ax=axes[i], color="red", alpha=0.5, label=f"Próbki z {title.split()[-1]}"
+    # )
+    # sns.kdeplot(data=data, x="diff_nvda", y="diff_intc", ax=axes[i], color="blue")
+    sns.kdeplot(x=samples[:, 0], y=samples[:, 1], ax=axes[i], color="red")
     axes[i].set_title(title)
     axes[i].set_xlabel("X1")
     axes[i].set_ylabel("X2")
@@ -512,10 +515,12 @@ plt.show()
 print(results_sorted[["Copula", "BIC"]])
 
 # %% [markdown]
-# - Punkty wygenerowane z kopuły Claytona skupiają się na przekątnej i prawie wcale nie przypominają rozrzutu danych oryginalnych.
-# - Próbki z kopuły Gumbela skupia się w centrum gęstości oryginalnych danych. Według testu BIC, kopuła Gumbela jest najlepsza.
-# - Punkty z kopuły Franka przypominają ciabattę i radzą sobie nieźle w odwzorowaniu rozrzutu oryginalnych danych.
-# - Kopuły Gaussa i t-Studenta miały podobne wyniki testu BIC. Próbki wygenerowane z tych kopuł pokrywają znaczną część obszarów zajmowanych przez niebieskie punkty, jednak nie są tak skupione w centralnych obszarach.
+# - Punkty wygenerowane z kopuły Claytona skupiają się na przekątnej, co jest typowe dla tej kopuły. Rozrzut danych wygenerowanych przez nią różni się znacznie od oryginalnych danych, co tłumaczy niski wynik testu BIC, wskazujący na słabe dopasowanie.
+# - Próbki z kopuły Gumbela najlepiej odzwierciedlają obszary największej gęstości oryginalnych danych, szczególnie w centralnych regionach. Wysoki wynik testu BIC (najlepszy w zestawieniu) sugeruje, że jest to najbardziej adekwatny model do odwzorowania struktury zależności w danych.
+# - Punkty generowane przez kopułę Franka tworzą wzór przypominający wydłużony kształt (np. ciabattę), co sprawia, że dość dobrze odwzorowują rozrzut oryginalnych danych. Mimo tego wynik testu BIC wskazuje na mniejsze dopasowanie w porównaniu z kopułą Gumbela.
+# - Próbki generowane przez Gaussa i t-Studenta pokrywają znaczną część obszarów zajmowanych przez oryginalne dane. Wyniki testu BIC dla obu kopuł są zbliżone, ale relatywnie niższe od kopuły Gumbela. Modele te odzwierciedlają ogólny rozkład danych, ale mają trudności w uchwyceniu lokalnych skupień.
+#
+# Dzięki testowi BIC widać, że kopuła Gumbela najlepiej modeluje dane w tym przypadku, natomiast kopuła Claytona nie radzi sobie z odwzorowaniem zależności w danych.
 #
 # ## Test Mardia
 # Możemy wykonać test na wielowymiarową normalność oraz policzyć skośność i kurtozę:
