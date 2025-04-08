@@ -50,7 +50,7 @@ legend("topleft", legend = c("NVDA", "AMD"), col = c("green", "red"), lty = 1)
 
 # Histogramy
 par(mfrow=c(1,2))
-hist(data$diff_NVDA, prob=T, ylim=c(0,0.3), xlim=c(-15,15), main="Rozkład zróżnicowanych cen NVDA",
+hist(data$diff_NVDA, prob=T, ylim=c(0,0.7), xlim=c(-15,15), main="Rozkład zróżnicowanych cen NVDA",
      xlab="Zmiana ceny [USD]", col="green", breaks=50)
 hist(data$diff_AMD, prob=T, ylim=c(0,0.3), xlim=c(-20,20), main="Rozkład zróżnicowanych cen AMD",
      xlab="Zmiana ceny [USD]", col="red", breaks=50)
