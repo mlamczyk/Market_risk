@@ -19,10 +19,11 @@ head(data)
 data <- data %>%
   pivot_wider(names_from = Symbol, values_from = Close)
 colnames(data) <- c("Date", "Oil", "1", "Gas", "2")
+data <- data[, c("Date", "Oil", "Gas")]
 data[1:10,]
-sum(is.na(data)) # 348
-data <- na.omit(data[, c("Date", "Oil", "Gas")])
-head(data)
+sum(is.na(data)) # 176
+data <- na.omit(data)
+sum(is.na(data)) # 0
 
 str(data)
 summary(data)
@@ -74,8 +75,8 @@ ggMarginal(p, type="histogram")
 # Podejście parametryczne
 fit.1 <- fitDist(X1, type="realline")
 fit.2 <- fitDist(X2, type="realline")
-fit.1$family # JSUoo "Johnson SU original"
-fit.2$family # JSUoo "Johnson SU original"
+fit.1$family # JSUo "Johnson SU original"
+fit.2$family # JSUo "Johnson SU original"
 
 par1 <- c(fit.1$mu, fit.1$sigma, fit.1$nu, fit.1$tau)
 par2 <- c(fit.2$mu, fit.2$sigma, fit.2$nu, fit.2$tau)
