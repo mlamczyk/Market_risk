@@ -215,17 +215,73 @@ mvn(data=X, mvnTest="mardia")$multivariateNormality
 
 ### Próbki z rozkładów brzegowych ###
 
-# Obliczanie VaR dla portfela dla różnych wartości beta
+set.seed(123)
+N <- 10000
+beta_grid <- seq(0, 1, by = 0.01)
 
-# Optymalne beta i minimalne VaR
+# Generowanie niezależnych próbek z dopasowanych rozkładów brzegowych
+x1_indep <- rJSUo(N, mu=par1[1], sigma=par1[2], nu=par1[3], tau=par1[4])
+x2_indep <- rJSUo(N, mu=par2[1], sigma=par2[2], nu=par2[3], tau=par2[4])
+
+# Obliczanie VaR portfela dla różnych wartości beta
+VaR_indep <- sapply(beta_grid, function(beta) {
+  portfolio <- beta * x1_indep + (1 - beta) * x2_indep
+  quantile(portfolio, 0.05) # 5% quantile = VaR na poziomie 95%
+})
+
+# Znalezienie optymalnej wartości beta (minimalizującej VaR)
+optimal_index_indep <- which.min(VaR_indep)
+optimal_beta_indep <- beta_grid[optimal_index_indep]
+min_VaR_indep <- VaR_indep[optimal_index_indep]
+
+cat("Krok 4a – Niezależne:\n")
+cat(sprintf("Optymalne beta: %.2f\n", optimal_beta_indep))
+cat(sprintf("Minimalne VaR: %.4f\n\n", min_VaR_indep))
 
 
-### Próbki z kopuły t-Studenta ###
+### Próbki z kopuły Franka ###
 
-# Obliczanie VaR dla portfela dla różnych wartości beta
+# Generowanie próbek z kopuły Franka (przy użyciu wcześniej dopasowanej)
+copula_frank <- frankCopula(param = cop.frank@estimate, dim = 2)
+u_samples <- rCopula(N, copula_frank)
 
-# Optymalne beta i minimalne VaR
+# Konwersja z przestrzeni jednostkowej do rzeczywistej przy użyciu rozkładów brzegowych
+x1_copula <- qJSUo(u_samples[,1], mu=par1[1], sigma=par1[2], nu=par1[3], tau=par1[4])
+x2_copula <- qJSUo(u_samples[,2], mu=par2[1], sigma=par2[2], nu=par2[3], tau=par2[4])
 
+# Obliczanie VaR portfela dla różnych beta
+VaR_copula <- sapply(beta_grid, function(beta) {
+  portfolio <- beta * x1_copula + (1 - beta) * x2_copula
+  quantile(portfolio, 0.05)
+})
+
+# Optymalna beta
+optimal_index_copula <- which.min(VaR_copula)
+optimal_beta_copula <- beta_grid[optimal_index_copula]
+min_VaR_copula <- VaR_copula[optimal_index_copula]
+
+cat("Krok 4b – Kopuła Franka:\n")
+cat(sprintf("Optymalne beta: %.2f\n", optimal_beta_copula))
+cat(sprintf("Minimalne VaR: %.4f\n\n", min_VaR_copula))
+
+# Wizualiacja
+
+df <- data.frame(
+  Beta = beta_grid,
+  VaR_Indep = VaR_indep,
+  VaR_Copula = VaR_copula
+)
+
+library(ggplot2)
+ggplot(df, aes(x = Beta)) +
+  geom_line(aes(y = VaR_Indep, color = "Niezależne")) +
+  geom_line(aes(y = VaR_Copula, color = "Kopuła Franka")) +
+  labs(title = "VaR portfela w funkcji beta",
+       x = expression(beta),
+       y = "VaR (95%)",
+       color = "Model") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
 
 ### Porównanie wyników i wnioski ###
 
